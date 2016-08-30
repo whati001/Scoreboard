@@ -1,0 +1,41 @@
+server {
+    listen 80;
+    server_name scoreboard_webserver_chart;
+
+    root /var/www;
+    location / {
+        include         uwsgi_params;
+        uwsgi_pass      unix:/var/www/scoreboard_web.sock;
+    }
+   
+    location /youtube {
+        rewrite ^/(.*)$ http://youtube.com;
+    }
+
+    location /websocket {
+        alias /var/www/;
+        index index.html;
+    }
+    location /unsupportedbrowser {
+        alias /var/www/;
+        index unsupportedbrowser.html;
+    }
+    location /LiquidCrystal-Bold.otf {
+        add_header Access-Control-Allow-Origin *;
+        alias /var/www/font/LiquidCrystal-Bold.otf;
+    }
+    location /DS-DIGIB.TTF {
+        add_header Access-Control-Allow-Origin *;
+        alias /var/www/font/DS-DIGIB.TTF;
+    }
+    location /dir {
+        autoindex on;
+    }
+    location /prezimagna {
+        rewrite ^/(.*)$ http://prezi.com/94od0o8xhkew/?utm_campaign=share&utm_medium=copy;
+    }
+    location /AppleChancery.ttf {
+       add_header Access-Control-Allow-Origin *;
+       alias /var/www/AppleChancery.ttf;
+    }
+}

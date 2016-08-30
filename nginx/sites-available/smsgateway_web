@@ -1,0 +1,10 @@
+server {
+    listen 8080;
+    server_name smsgateway_webserver;
+
+    root /var/www;
+    location / {
+        include         uwsgi_params;
+        uwsgi_pass      unix:/var/www/smsgateway_web.sock;
+    }
+}
