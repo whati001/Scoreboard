@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#Check if all I/O Expander are reachabel
+while [ 1 ]
+do 
+if [[ $(i2cdetect -y 1 | grep '20:.*20.*21.*22.*23.*24.*25.*26.*27' ) ]]
+then
+	echo "All ics avaiable" >> check_out.txt
+else
+	echo "NO" >> check_out.txt
+fi
+
+sleep 1
+
+done

@@ -1,0 +1,15 @@
+intervaltimemin=0
+intervaltimesec=0
+timedelta=true
+filepath=/opt/scoreboard/excelFiles/Turnierplan.xlsx
+gamemode=MIXEDGROUP
+starttimehour=8
+strattimemin=0
+groupgametime=7
+groupbreaktime=
+ccpggametime=0
+ccpgbreaktime=7
+ccenabledisable=JA
+operationmode=stopwatch
+gamecount=6
+gameplayed=6
