@@ -1,0 +1,15 @@
+#!/usr/bin/python3
+#! -*- coding: utf-8 -*-
+
+
+def application(env, start_response):
+	
+	start_response('200 OK', [('Content-Type','text/html')])
+
+	#output = "Hello User and welcome to me Website.\nFor some testing please read that unicode letters: äöÄÖ".encode('utf-8')
+	
+	html = open('/var/www/index.html')
+
+	return [html.read().encode('utf-8')]
+	#return [b'Hello World']
+
