@@ -1,0 +1,680 @@
+#!/bin/python3
+
+#scoreboard_main v1.0 c Andreas Karner
+#created for local clubs of municipal Hoffstaetten
+
+#Channellog:
+#24-08-2015: create new version with classes and threading library
+#25-08-2015: continue creating new version with classes and threading library
+#25-08-2015: continue creating new version with classes, deleting threading library, useing Tkinter timing
+
+################################################################################
+#import libraries
+#try if python2 is used
+try:
+	from Tkinter import *
+except ImportError:
+	from tkinter import *
+
+from PIL import Image, ImageTk
+from threading import Timer
+import os
+import time
+import smbus
+
+###############################################################################
+#global variables
+#root directory of the script
+var_root_dir = None
+
+#Classes 
+###############################################################################
+#scoreboard_main_Mainframe
+class scoreboard_main_class():
+	###stardard function###
+	def __init__(self, scoreboard_master, class_smbus):
+			print("Scoreboard_main started")
+			###Global variables###
+			global var_root_dir
+			self.var_root_dir = var_root_dir
+			self.class_smbus = class_smbus
+			#Reset all LEDs
+			#self.class_smbus.write_out(7, 8)
+			#self.class_smbus.write_out(6, 8)
+			self.class_smbus.write_out(5, 8)
+			#self.class_smbus.write_out(4, 8)
+			#self.class_smbus.write_out(3, 8)
+			#self.class_smbus.write_out(2, 8)
+			#self.class_smbus.write_out(1, 8)
+			#self.class_smbus.write_out(0, 8)
+			self.scoreboard_master = scoreboard_master
+			
+			###Draw GUI Scoreboard###
+			#Log if scoreboard_main_main is starting
+			print("Scoreboard_main GUI will be draw...")
+
+			###Draw the GUI###
+			self.scoreboard_master.title("Anzeigetafel")
+			
+			#Fullscreen
+			#self.scoreboard_master.attributes("-fullscreen",True)
+			
+			###Headerinfo###
+			self.Header01 = Label(self.scoreboard_master, text='Anzeigetapfel', font='Arial 32 bold')
+			self.Header01.pack()
+			self.Header01.place(relx=0.5, y=50, anchor=CENTER)
+				
+			self.Header02 = Label(self.scoreboard_master, text='Bitte Betriebsart wählen:', font='Arial 27 bold')
+			self.Header02.pack()
+			self.Header02.place(relx=0.5, y=100, anchor=CENTER)
+			
+			###Button### 
+			#start the different operation modes
+			#stopwatch_master Button 
+			self.stopwatch_master = Button(self.scoreboard_master, text="Stoppuhr", font='Arial 20 bold', command=lambda: self.new_window(stopwatch_master_class))
+			self.stopwatch_master.pack()
+			self.stopwatch_master.place(relx=0.8, rely=0.5, height=100, width=150, anchor=CENTER)
+			
+			#countdown_master Button
+			self.countdown_master = Button(self.scoreboard_master, text="Countdown", font='Arial 20 bold',command=lambda: self.new_window(countdown_master_class))
+			self.countdown_master.pack()
+			self.countdown_master.place(relx=0.2, rely=0.5, height=100, width=150, anchor=CENTER)
+			
+			###Logos###
+			#to change them, change the directory
+			print(self.var_root_dir)
+			self.jvplogo = ImageTk.PhotoImage(Image.open(self.var_root_dir+"/images/jvplogo.gif"))
+			self.jvplogo_label=Label(self.scoreboard_master, image = self.jvplogo)
+			self.jvplogo_label.pack()
+			self.jvplogo_label.place(relx=0.2, rely=0.8, y=-50, anchor=CENTER)
+			
+			self.srlogo = ImageTk.PhotoImage(Image.open(self.var_root_dir+"/images/srlogo.gif"))
+			self.srlogo_label=Label(self.scoreboard_master, image = self.srlogo)
+			self.srlogo_label.pack()
+			self.srlogo_label.place(relx=0.8, rely=0.8, y=-50, anchor=CENTER)
+		
+			###Close the GUI###
+			self.exit = Button(self.scoreboard_master, text="Schliessen", command=lambda: self.scoreboard_master.destroy())
+			self.exit.pack()
+			self.exit.place(relx=1, rely=1, x=-10, y=-10, anchor=SE)
+
+	def new_window(self, toogle):
+		self.newWindow = Toplevel(self.scoreboard_master)
+		#Start stopwatch or countdown
+		self.operationMode = toogle(self.newWindow, self.class_smbus)
+			
+				
+
+#stopwatch_masterframe
+class stopwatch_master_class():
+	###Standard function###
+	def __init__(self, scoreboard_master, class_smbus):
+		print("Stopwath_main started")
+		self.stopwatch_master = scoreboard_master
+		self.class_smbus = class_smbus
+		#Reset all LEDs
+		#self.class_smbus.write_out(7, 8)
+		#self.class_smbus.write_out(6, 8)
+		self.class_smbus.write_out(5, 8)
+		#self.class_smbus.write_out(4, 8)
+		#self.class_smbus.write_out(3, 8)
+		#self.class_smbus.write_out(2, 8)
+		#self.class_smbus.write_out(1, 8)
+		#self.class_smbus.write_out(0, 8)
+		self.var_track_set = None
+		self.var_track_value = None
+		self.var_time_old = None
+		self.var_track_enable = None
+		self.var_track_set = [0,0]
+		self.var_track_value = [0,0,0,0]
+
+		###Draw the stopwatch GUI###
+		print("stopwatch_master GUI will be draw...")
+
+		self.stopwatch_master.title("Stoppuhr")
+	        
+		#Fullscreen
+		#self.stopwatch_master.attributes("-fullscreen",True)
+			
+	        ###Headerinfo###
+		self.Header01=Label(self.stopwatch_master, text='Stoppuhr', font='Arial 50 bold')
+		self.Header01.pack()
+		self.Header01.place(relx=0.5, y=50, anchor=CENTER)
+		
+		###Time Input###
+		#Label for minutes, can change with beneath buttons
+		self.minutes=Label(self.stopwatch_master, text='00', font='Arial 40 bold')
+		self.minutes.pack()
+		self.minutes.place(relx=0.5, rely=0.5, x=-100, anchor=CENTER)
+	
+		#i.write_out(ncrement the minutes
+		self.minutes_plus=Button(self.stopwatch_master, text='+', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('+',0))
+		self.minutes_plus.pack()
+		self.minutes_plus.place(relx=0.5, rely=0.5, x=-30, y=-5, height=40, width=40, anchor=S)
+		
+		#decrement the minutes
+		self.minutes_minus=Button(self.stopwatch_master, text='-', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('-',0))
+		self.minutes_minus.pack()
+		self.minutes_minus.place(relx=0.5, rely=0.5, x=-30, y=5, height=40, width=40, anchor=N)
+		
+		#Label for second, can change with beneath buttons
+		self.secondes=Label(self.stopwatch_master, text='00', font='Arial 40 bold')
+		self.secondes.pack()
+		self.secondes.place(relx=0.5, x=30, rely=0.5, anchor=CENTER)
+	
+		#increment the seconds
+		self.secondes_plus=Button(self.stopwatch_master, text='+', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('+',1))
+		self.secondes_plus.pack()
+		self.secondes_plus.place(relx=0.5, rely=0.5, x=100, y=-5, height=40, width=40, anchor=S)
+	
+		#decrement the seconds
+		self.secondes_minus=Button(self.stopwatch_master, text='-', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('-',1))
+		self.secondes_minus.pack()
+		self.secondes_minus.place(relx=0.5, rely=0.5, x=100, y=5, height=40, width=40, anchor=N)
+		
+		#Stopwatch and Countdown Label	
+		self.steps=Label(self.stopwatch_master, text='00 : 00', font='Arial 80 bold')
+		self.steps.pack()
+		self.steps.place(relx=0.5, rely=0.25, anchor=CENTER)
+
+		###Scores###	
+		#Label and InfoLabel for score of home team, can change with beneath buttons
+		self.Home_Player_Info=Label(self.stopwatch_master, text='Punkte Heimmannschaft', font='Arial 20 bold')
+		self.Home_Player_Info.pack()
+		self.Home_Player_Info.place(relx=0, x=200, rely=0.5, y=-70, anchor=CENTER)
+	
+		self.Home_Player=Label(self.stopwatch_master, text='00', font='Arial 60 bold')
+		self.Home_Player.pack()
+		self.Home_Player.place(relx=0, x=150, rely=0.5, anchor=CENTER)
+	
+		#increment the score of home team
+		self.Home_Player_plus=Button(self.stopwatch_master, text='+', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('+',2))
+		self.Home_Player_plus.pack()
+		self.Home_Player_plus.place(relx=0, rely=0.5, x=250, y=-5, height=40, width=40, anchor=S)
+	
+		#decrement the score of home team
+		self.Home_Player_minus=Button(self.stopwatch_master, text='-', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('-',2))
+		self.Home_Player_minus.pack()
+		self.Home_Player_minus.place(relx=0, rely=0.5, x=250, y=5, height=40, width=40, anchor=N)
+	
+		#Label and InfoLabel for score of guest team, can change with beneath buttons
+		self.Guest_Player_Info=Label(self.stopwatch_master, text='Punkte Gastmanschaft', font='Arial 20 bold')
+		self.Guest_Player_Info.pack()
+		self.Guest_Player_Info.place(relx=1, x=-200, rely=0.5, y=-70, anchor=CENTER)
+	
+		self.Guest_Player=Label(self.stopwatch_master, text='00', font='Arial 60 bold')
+		self.Guest_Player.pack()
+		self.Guest_Player.place(relx=1, x=-150, rely=0.5, anchor=CENTER)
+	
+		#increment the score of guest team
+		self.Guest_Player_plus=Button(self.stopwatch_master, text='+', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('+',3))
+		self.Guest_Player_plus.pack()
+		self.Guest_Player_plus.place(relx=1, x=-250, rely=0.5, y=-5, height=40, width=40, anchor=S)
+	
+		#decrement the score of guest team
+		self.Guest_Player_minus=Button(self.stopwatch_master, text='-', font='Arial 40 bold', command=lambda: self.stopwatch_master_set('-',3))
+		self.Guest_Player_minus.pack()
+		self.Guest_Player_minus.place(relx=1, x=-250, rely=0.5, y=5, height=40, width=40, anchor=N)
+			
+		###Start Counter###
+		self.btn_start=Button(self.stopwatch_master, text="Start", font='Arial 32 bold', command=lambda: self.enabel_tracking('1'))
+		self.btn_start.pack()
+		self.btn_start.place(relx=0.25, rely=0.8, height=100, width=150, anchor=CENTER)
+	
+		###Break Counter###
+		self.btn_break=Button(self.stopwatch_master, text="Pause", font='Arial 32 bold', state=DISABLED, command=lambda: self.enabel_tracking('0'))
+		self.btn_break.pack()
+		self.btn_break.place(relx=0.5, rely=0.8, height=100, width=150, anchor=CENTER)
+	
+		###Clear and stop counter###
+		self.btn_clear=Button(self.stopwatch_master, text="Stopp", font='Arial 32 bold', state=DISABLED, command=self.clear_count)
+		self.btn_clear.pack()
+		self.btn_clear.place(relx=0.75, rely=0.8, height=100, width=150, anchor=CENTER)
+	
+		###Clock Label###
+		self.clock=Label(self.stopwatch_master, font='Arial 20 bold')
+		self.clock.pack()
+		self.clock.place(relx=0.5, rely=1, x=-5, y=-5, anchor=S)
+		#Start update function
+		self.stopwatch_master_update()
+	
+	        ###Close stopwatch GUI###
+		self.exit = Button(self.stopwatch_master, text="Zurück", command=lambda: self.stopwatch_master.destroy())
+		self.exit.pack()
+		self.exit.place(relx=1, rely=1, x=-10, y=-10, anchor=SE)
+	
+	def stopwatch_master_set(self, toggle, position):
+			if position == 0 or position == 1:
+				if toggle == '+' and self.var_track_set[position] < 60:
+					self.var_track_set[position]+=1
+				
+				elif toggle == '-' and self.var_track_set[position] > 0:
+					self.var_track_set[position]-=1
+			
+				if position == 0:
+					self.minutes.config(text='%0.2d' %(self.var_track_set[position]))
+				elif position == 1:
+					self.secondes.config(text='%0.2d' %(self.var_track_set[position]))
+	
+			elif position == 2 or position == 3:
+				if toggle == '+' and self.var_track_value[position] < 99:
+					self.var_track_value[position]+=1
+				elif toggle == '-' and self.var_track_value[position] > 0:
+					self.var_track_value[position]-=1
+				
+				###Set Ouput###
+				if position == 2:
+					#Virtual
+					self.Home_Player.config(text='%0.2d' %(self.var_track_value[position]))
+					#LED
+					#self.class_smbus.write_out(0, (int(str(self.var_track_value[position]).zfill(2)[0])))
+					#self.class_smbus.write_out(1, (int(str(self.var_track_value[position]).zfill(2)[1])))
+				
+				elif position == 3:
+					#Virtual
+					self.Guest_Player.config(text='%0.2d' %(self.var_track_value[position]))
+					#LED
+					#self.class_smbus.write_out(6, (int(str(self.var_track_value[position]).zfill(2)[0])))
+					#self.class_smbus.write_out(7, (int(str(self.var_track_value[position]).zfill(2)[1])))
+			#Tempory LOG
+			#print(self.var_track_value[position])
+
+	def stopwatch_master_update(self):
+		#for exactier timing self.var_time_old is define in __init___
+		self.var_time_currently = time.strftime('%H:%M:%S')
+		#print(self.var_time_currently != self.var_time_old)
+		if self.var_time_currently != self.var_time_old:
+			self.var_time_old = self.var_time_currently
+			self.clock.config(text = self.var_time_currently)
+			if self.var_track_enable == '1':
+				if ((self.var_track_set[0]*60 + self.var_track_set[1])) > ((self.var_track_value[0]*60 + self.var_track_value[1])):
+							self.var_track_value[1]+=1
+							if self.var_track_value[1] == 60:
+								self.var_track_value[1]=0
+								self.var_track_value[0]+=1
+							if self.var_track_value[1]== 60 and self.var_track_value[0]==60:
+								self.var_track_value[0]=0
+								self.var_track_value[1]=0
+								self.var_track_enable='0'
+			
+				else:
+					self.var_track_enable = '0'
+					self.enabel_tracking('0')
+
+				###Set Output###
+				#virtual
+				self.steps.config(text='%0.2d : %0.2d' %(self.var_track_value[0], self.var_track_value[1]))
+				#LED
+				#Seconds, second position ##:#X
+				self.class_smbus.write_out(5, (int(str(self.var_track_value[1]).zfill(2)[1])))
+				#Seconds, first position ##:X#
+				#self.class_smbus.write_out(4, (int(str(self.var_track_value[1]).zfill(2)[0])))
+				#Minutes, second position #X:##
+				#self.class_smbus.write_out(3, (int(str(self.var_track_value[0]).zfill(2)[1])))
+				#Seconds, first position X#:##
+				#self.class_smbus.write_out(2, (int(str(self.var_track_value[0]).zfill(2)[0])))
+		
+		#restart function, get interval
+		self.clock.after(400, self.stopwatch_master_update)
+				
+
+	def enabel_tracking(self, toogle):
+		self.toogle = toogle
+		#Start tracking
+		if self.toogle=='1':
+			#Set buttons state
+			self.minutes_plus.config(state=DISABLED)
+			self.minutes_minus.config(state=DISABLED)
+			self.secondes_plus.config(state=DISABLED)
+			self.secondes_minus.config(state=DISABLED)
+			self.btn_start.config(state=DISABLED)
+			self.btn_break.config(state=ACTIVE)
+			self.btn_clear.config(state=ACTIVE)
+			self.var_track_enable='1'
+		#Break tracking
+		elif self.toogle=='0':
+			#Set buttons state
+			self.minutes_plus.config(state=ACTIVE)
+			self.minutes_minus.config(state=ACTIVE)
+			self.secondes_plus.config(state=ACTIVE)
+			self.secondes_minus.config(state=ACTIVE)
+			self.btn_start.config(state=ACTIVE)
+			self.btn_break.config(state=DISABLED)
+			self.var_track_enable='0'
+
+	def clear_count(self):
+		#diable tracking
+		self.var_track_enable='0'
+		#Set buttons state
+		self.minutes_plus.config(state=ACTIVE)
+		self.minutes_minus.config(state=ACTIVE)
+		self.secondes_plus.config(state=ACTIVE)
+		self.secondes_minus.config(state=ACTIVE)
+		self.btn_start.config(state=ACTIVE)
+		self.btn_break.config(state=DISABLED)
+		###Restore###
+		#Output virtual
+		self.var_track_value[0]=0
+		self.var_track_value[1]=0
+		self.steps.config(text='00 : 00')
+		#Reset all LEDs
+		#self.class_smbus.write_out(7, 8)
+		#self.class_smbus.write_out(6, 8)
+		self.class_smbus.write_out(5, 8)
+		#self.class_smbus.write_out(4, 8)
+		#self.class_smbus.write_out(3, 8)
+		#self.class_smbus.write_out(2, 8)
+		#self.class_smbus.write_out(1, 8)
+		#self.class_smbus.write_out(0, 8)
+
+#countdown_master_Mainframe
+class countdown_master_class():
+	###Standard funcion###
+	def __init__(self, scoreboard_master, class_smbus):
+		print("countdown_master started")
+		self.countdown_master = scoreboard_master
+		self.class_smbus = class_smbus
+		#Reset all LEDs
+		#self.class_smbus.write_out(7, 8)
+		#self.class_smbus.write_out(6, 8)
+		self.class_smbus.write_out(5, 8)
+		#self.class_smbus.write_out(4, 8)
+		#self.class_smbus.write_out(3, 8)
+		#self.class_smbus.write_out(2, 8)
+		#self.class_smbus.write_out(1, 8)
+		#self.class_smbus.write_out(0, 8)
+		self.var_track_set = None
+		self.var_track_value = None
+		self.var_time_old = None
+		self.var_track_enable = None
+		self.var_track_set = [0,0]
+		self.var_track_value = [0,0,0,0]
+
+		###Draw countdown_master GUI###
+		print("countdown_master GUI will be draw...")
+		self.countdown_master.title("Coundown")
+		
+		#Fullscreen
+		#self.countdown_master.attributes("-fullscreen",True)
+		
+	        ###Headerinfo###
+		self.Header01=Label(self.countdown_master, text='Countdown', font='Arial 50 bold')
+		self.Header01.pack()
+		self.Header01.place(relx=0.5, y=50, anchor=CENTER)
+
+		###Time Input###
+		#Label for minutes, can change with beneath buttons
+		self.minutes=Label(self.countdown_master, text='00', font='Arial 40 bold')
+		self.minutes.pack()
+		self.minutes.place(relx=0.5, rely=0.5, x=-100, anchor=CENTER)
+		
+		#Increment minutes
+		self.minutes_plus=Button(self.countdown_master, text='+', font='Arial 40 bold', command=lambda: self.countdown_master_set('+',0))
+		self.minutes_plus.pack()
+		self.minutes_plus.place(relx=0.5, rely=0.5, x=-30, y=-5, height=40, width=40, anchor=S)
+	
+		#Decrement minutes
+		self.minutes_minus=Button(self.countdown_master, text='-', font='Arial 40 bold', command=lambda: self.countdown_master_set('-',0))
+		self.minutes_minus.pack()
+		self.minutes_minus.place(relx=0.5, rely=0.5, x=-30, y=5, height=40, width=40, anchor=N)
+	
+		#Label for seconds, can change with beneath buttons
+		self.secondes=Label(self.countdown_master, text='00', font='Arial 40 bold')
+		self.secondes.pack()
+		self.secondes.place(relx=0.5, x=30, rely=0.5, anchor=CENTER)
+	
+		#Incremnts seconds
+		self.secondes_plus=Button(self.countdown_master, text='+', font='Arial 40 bold', command=lambda: self.countdown_master_set('+',1))
+		self.secondes_plus.pack()
+		self.secondes_plus.place(relx=0.5, rely=0.5, x=100, y=-5, height=40, width=40, anchor=S)
+	
+		#Decrement seconds
+		self.secondes_minus=Button(self.countdown_master, text='-', font='Arial 40 bold', command=lambda: self.countdown_master_set('-',1))
+		self.secondes_minus.pack()
+		self.secondes_minus.place(relx=0.5, rely=0.5, x=100, y=5, height=40, width=40, anchor=N)
+		
+		#countdown and Countdown Label	
+		self.steps=Label(self.countdown_master, text='00 : 00', font='Arial 80 bold')
+		self.steps.pack()
+		self.steps.place(relx=0.5, rely=0.25, anchor=CENTER)
+
+		###Scores###	
+		#Label and InfoLabel for score of home team, can change with beneath buttons
+		self.Home_Player_Info=Label(self.countdown_master, text='Punkte Heimmannschaft', font='Arial 20 bold')
+		self.Home_Player_Info.pack()
+		self.Home_Player_Info.place(relx=0, x=200, rely=0.5, y=-70, anchor=CENTER)
+	
+		#increment the score of home team
+		self.Home_Player=Label(self.countdown_master, text='00', font='Arial 60 bold')
+		self.Home_Player.pack()
+		self.Home_Player.place(relx=0, x=150, rely=0.5, anchor=CENTER)
+	
+		#increment the score of home team
+		self.Home_Player_plus=Button(self.countdown_master, text='+', font='Arial 40 bold', command=lambda: self.countdown_master_set('+',2))
+		self.Home_Player_plus.pack()
+		self.Home_Player_plus.place(relx=0, rely=0.5, x=250, y=-5, height=40, width=40, anchor=S)
+	
+		#decrement the score of home team
+		self.Home_Player_minus=Button(self.countdown_master, text='-', font='Arial 40 bold', command=lambda: self.countdown_master_set('-',2))
+		self.Home_Player_minus.pack()
+		self.Home_Player_minus.place(relx=0, rely=0.5, x=250, y=5, height=40, width=40, anchor=N)
+	
+		#Label and InfoLabel for score of home team, can change with beneath buttons	
+		self.Guest_Player_Info=Label(self.countdown_master, text='Punkte Gastmanschaft', font='Arial 20 bold')
+		self.Guest_Player_Info.pack()
+		self.Guest_Player_Info.place(relx=1, x=-200, rely=0.5, y=-70, anchor=CENTER)
+	
+		self.Guest_Player=Label(self.countdown_master, text='00', font='Arial 60 bold')
+		self.Guest_Player.pack()
+		self.Guest_Player.place(relx=1, x=-150, rely=0.5, anchor=CENTER)
+		
+		#increment the score of guest team
+		self.Guest_Player_plus=Button(self.countdown_master, text='+', font='Arial 40 bold', command=lambda: self.countdown_master_set('+',3))
+		self.Guest_Player_plus.pack()
+		self.Guest_Player_plus.place(relx=1, x=-250, rely=0.5, y=-5, height=40, width=40, anchor=S)
+	
+		#decrement the score of guest team
+		self.Guest_Player_minus=Button(self.countdown_master, text='-', font='Arial 40 bold', command=lambda: self.countdown_master_set('-',3))
+		self.Guest_Player_minus.pack()
+		self.Guest_Player_minus.place(relx=1, x=-250, rely=0.5, y=5, height=40, width=40, anchor=N)
+			
+		###Start Counter###
+		self.btn_start=Button(self.countdown_master, text="Start", font='Arial 32 bold', command=lambda: self.enabel_tracking('1'))
+		self.btn_start.pack()
+		self.btn_start.place(relx=0.25, rely=0.8, height=100, width=150, anchor=CENTER)
+	
+		###Break Counter###
+		self.btn_break=Button(self.countdown_master, text="Pause", font='Arial 32 bold', state=DISABLED, command=lambda: self.enabel_tracking('0'))
+		self.btn_break.pack()
+		self.btn_break.place(relx=0.5, rely=0.8, height=100, width=150, anchor=CENTER)
+		
+		###Clear and stop counter###
+		self.btn_clear=Button(self.countdown_master, text="Stopp", font='Arial 32 bold', state=DISABLED, command=self.clear_count)
+		self.btn_clear.pack()
+		self.btn_clear.place(relx=0.75, rely=0.8, height=100, width=150, anchor=CENTER)
+	
+		###Clock Label###
+		self.clock=Label(self.countdown_master, font='Arial 20 bold')
+		self.clock.pack()
+		self.clock.place(relx=0.5, rely=1, x=-5, y=-5, anchor=S)
+		#Start update function
+		self.countdown_master_update()
+
+	        ###Close stopwatch GUI###
+		self.exit = Button(self.countdown_master, text="Zurück", command=lambda: self.countdown_master.destroy())
+		self.exit.pack()
+		self.exit.place(relx=1, rely=1, x=-10, y=-10, anchor=SE)
+
+	def countdown_master_set(self, toggle, position):
+			if position == 0 or position == 1:
+				if toggle == '+' and self.var_track_set[position] < 60:
+					self.var_track_set[position]+=1
+					self.var_track_value[position] = self.var_track_set[position]
+				
+				elif toggle == '-' and self.var_track_set[position] > 0:
+					self.var_track_set[position] -= 1
+					self.var_track_value[position] = self.var_track_set[position]
+				
+				###Set Output###
+				#Minutes update when setup the interval
+				if position == 0:
+					#Virtual
+					self.minutes.config(text='%0.2d' %(self.var_track_set[position]))
+					#self.class_smbus.write_out(2, (int(str(self.var_track_set[position]).zfill(2)[0])))
+					#self.class_smbus.write_out(3, (int(str(self.var_track_set[position]).zfill(2)[1])))
+				#Seconds update when setup the interval
+				elif position == 1:
+					#Virutal
+					self.secondes.config(text='%0.2d' %(self.var_track_set[position]))
+					#LED
+					#self.class_smbus.write_out(4, (int(str(self.var_track_set[position]).zfill(2)[0])))
+					self.class_smbus.write_out(5, (int(str(self.var_track_set[position]).zfill(2)[1])))
+				self.steps.config(text='%0.2d : %0.2d' %(self.var_track_set[0], self.var_track_set[1]))
+	
+			elif position == 2 or position == 3:
+				if toggle == '+' and self.var_track_value[position] < 99:
+					self.var_track_value[position]+=1
+				elif toggle == '-' and self.var_track_value[position] > 0:
+					self.var_track_value[position]-=1
+	
+				if position == 2:
+					#Virtual
+					self.Home_Player.config(text='%0.2d' %(self.var_track_value[position]))
+					#LED
+					#self.class_smbus.write_out(0, (int(str(self.var_track_value[position]).zfill(2)[0])))
+					#self.class_smbus.write_out(1, (int(str(self.var_track_value[position]).zfill(2)[1])))
+				elif position == 3:
+					#Virtual
+					self.Guest_Player.config(text='%0.2d' %(self.var_track_value[position]))
+					#LED
+					#self.class_smbus.write_out(6, (int(str(self.var_track_value[position]).zfill(2)[0])))
+					#self.class_smbus.write_out(7, (int(str(self.var_track_value[position]).zfill(2)[1])))
+	
+	def countdown_master_update(self):
+		#for exactier timing self.var_time_old is define in __init___
+		self.var_time_currently = time.strftime('%H:%M:%S')
+		#print(self.var_time_currently != self.var_time_old)
+		if self.var_time_currently != self.var_time_old:
+			self.var_time_old = self.var_time_currently
+			self.clock.config(text = self.var_time_currently)
+			if self.var_track_enable == '1':
+				if (self.var_track_value[0]*60 + self.var_track_value[1]) > 0:
+					self.var_track_value[1]-=1
+					if self.var_track_value[1] == -1:
+						self.var_track_value[0]-=1
+						self.var_track_value[1]=59
+				else:
+					self.var_track_enable = '0'
+				
+				###Set Output###
+				#virtual
+				self.steps.config(text='%0.2d : %0.2d' %(self.var_track_value[0], self.var_track_value[1]))
+				#LED
+				#Seconds, second position ##:#X
+				self.class_smbus.write_out(5, (int(str(self.var_track_value[1]).zfill(2)[1])))
+				#Seconds, first position ##:X#
+				#self.class_smbus.write_out(4, (int(str(self.var_track_value[1]).zfill(2)[0])))
+				#Minutes, second position #X:##
+				#self.class_smbus.write_out(3, (int(str(self.var_track_value[0]).zfill(2)[1])))
+				#Seconds, first position X#:##
+				#self.class_smbus.write_out(2, (int(str(self.var_track_value[0]).zfill(2)[0])))
+		
+		#Restart function, to get interval
+		self.clock.after(400, self.countdown_master_update)
+
+	def enabel_tracking(self, toogle):
+		self.toogle = toogle
+		#if toogle == '1' then tracking is enabled, else disabled
+		if self.toogle=='1':
+			#Set buttons state
+			self.minutes_plus.config(state=DISABLED)
+			self.minutes_minus.config(state=DISABLED)
+			self.secondes_plus.config(state=DISABLED)
+			self.secondes_minus.config(state=DISABLED)
+			self.btn_start.config(state=DISABLED)
+			self.btn_break.config(state=ACTIVE)
+			self.btn_clear.config(state=ACTIVE)
+			self.var_track_enable='1'
+		elif self.toogle=='0':
+			#Set buttons state
+			self.minutes_plus.config(state=ACTIVE)
+			self.minutes_minus.config(state=ACTIVE)
+			self.secondes_plus.config(state=ACTIVE)
+			self.secondes_minus.config(state=ACTIVE)
+			self.btn_start.config(state=ACTIVE)
+			self.btn_break.config(state=DISABLED)
+			self.var_track_enable='0'
+
+	def clear_count(self):
+		#disable tracking
+		self.var_track_enable='0'
+		#set buttons
+		self.btn_start.config(state=ACTIVE)
+		self.btn_break.config(state=DISABLED)
+		#Set buttons state
+		self.minutes_plus.config(state=ACTIVE)
+		self.minutes_minus.config(state=ACTIVE)
+		self.secondes_plus.config(state=ACTIVE)
+		self.secondes_minus.config(state=ACTIVE)
+		self.btn_start.config(state=ACTIVE)
+		self.btn_break.config(state=DISABLED)
+		###restore###
+		#timing variables
+		self.var_track_value[0]=self.var_track_set[0]
+		self.var_track_value[1]=self.var_track_set[1]
+		#Output virtual
+		self.steps.config(text='%0.2d : %0.2d' %(self.var_track_value[0], self.var_track_value[1]))
+		#Reset all LEDs
+		#self.class_smbus.write_out(7, 8)
+		#self.class_smbus.write_out(6, 8)
+		self.class_smbus.write_out(5, 8)
+		#self.class_smbus.write_out(4, 8)
+		#self.class_smbus.write_out(3, 8)
+		#self.class_smbus.write_out(2, 8)
+		#self.class_smbus.write_out(1, 8)
+		#self.class_smbus.write_out(0, 8)
+
+#Setup smbus
+class setupsmbus():
+	def __init__(self, addresses):
+		#Variables
+		self.var_out_addresses = addresses
+		self.var_track_countout=[0b00111111,0b00000110,0b01011011,0b01001111,0b01100110,0b01101101,0b01111100,0b00000111,0b01111111,0b01100111]
+
+		self.addresses = addresses
+		#Open Bus on interface 1
+		self.smbus = smbus.SMBus(1)
+		#Define all Ports on all ICs as Output (0x00) and set initial all Ports to hight
+		#for address in self.addresses:
+			#print(address)
+			#self.smbus.write_byte_data(address,0x00,0x00)
+			#self.smbus.write_byte_data(address,0x09,0b01111111)
+		#Temporary
+		self.smbus.write_byte_data(0x25,0x00,0x00)
+		self.smbus.write_byte_data(0x25,0x09,0b01111111)
+
+	#write out function
+	def write_out(self, address, value):
+		self.address = address
+		self.value = value
+		#Tempory testing
+		print(var_out_addresses[self.address])
+		print(self.value)
+		self.smbus.write_byte_data(var_out_addresses[self.address],0x09,self.var_track_countout[self.value])
+
+#Mainfunktion
+if __name__ == "__main__":
+	#Loog script starts
+	print("Scoreboard script started")
+	
+	#find root direction of script
+	var_root_dir = os.path.dirname(os.path.realpath(__file__))
+	print("Script root: "+var_root_dir)
+	
+	#Setup smbus
+	var_out_addresses = [0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27]
+	class_setupsmbus = setupsmbus(var_out_addresses)
+	#Setup GUI
+	root_gui = Tk()
+	class_scoreboard_main = scoreboard_main_class(root_gui, class_setupsmbus)
+	root_gui.mainloop()
